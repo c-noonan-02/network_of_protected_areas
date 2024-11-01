@@ -61,3 +61,69 @@ coordinate_data_island <- coordinate_data[coordinate_data_island_ind,]
 plot(st_geometry(UK_sf))
 points(coordinate_data_island)
 
+
+# 3. SELECT DATA FOR THE MOST RECENT PERIOD AND FORMAT IT INTO A SITE-BY-SPECIES MATRIX
+
+# Since the data set covers a large period (1968-1972, 1988-1991 and 2008-2011)
+# we can choose to select the most recent time frame. 
+
+# The data also covers two seasons - April-July and Nov-Feb - we can save these
+# in seperate dataframes.
+
+# select bird data for the desired period
+bird_recent_data <- bird_data[which(bird_data$period=="2008-11" | bird_data$period=="2007/08-10/11"),c("period","speccode","grid")]
+
+# check dimensions and data
+dim(coordinate_data_island)
+coordinate_data_island <- coordinate_data_island[which(coordinate_data_island$grid %in% bird_recent_data$grid),]
+dim(coordinate_data_island)
+bird_recent_data <- bird_recent_data[which(bird_recent_data$grid %in% coordinate_data_island$grid),]
+head(bird_recent_data)
+
+# save the winter and summer subsets
+bird_summer_data <- bird_recent_data[which(bird_recent_data$period=="2008-11"),c("speccode","grid")]
+bird_winter_data <- bird_recent_data[which(bird_recent_data$period=="2007/08-10/11"),c("speccode","grid")]
+
+# we then need to transform these data frames into site-by-species data frames
+# we can use tidyverse like last practical
+
+# add a column with the values to populate the site-by-species data frame
+bird_summer_data$presence <- 1 
+# create site-by-species data frame with NAs
+bird_summer_data_new <- bird_summer_data %>% 
+  pivot_wider(names_from=speccode,values_from=c(presence)) 
+# create values to replace the NAs
+list0 <- as.list(rep(0,ncol(bird_summer_data_new))) 
+names(list0) <- names(bird_summer_data_new)
+# replace the NAs by 0’s
+bird_summer_data_new <- as.data.frame(bird_summer_data_new %>% replace_na(list0)) 
+# change row names
+row.names(bird_summer_data_new) <- bird_summer_data_new$grid
+# remove the first column with site names
+bird_summer_data_new <- bird_summer_data_new[,-1] 
+# sort by grid cell names
+bird_summer_data_new <- bird_summer_data_new[order(row.names(bird_summer_data_new)),] 
+
+# add a column with the values to populate the site-by-species data frame
+bird_winter_data$presence <- 1
+# create site-by-species data frame with NAs
+bird_winter_data_new <- bird_winter_data %>% 
+  pivot_wider(names_from=speccode,values_from=c(presence))
+# create values to replace the NAs
+list0 <- as.list(rep(0,ncol(bird_winter_data_new)))
+names(list0) <- names(bird_winter_data_new)
+# replace the NAs by 0’s
+bird_winter_data_new <- as.data.frame(bird_winter_data_new %>% replace_na(list0))
+# change row names
+row.names(bird_winter_data_new) <- bird_winter_data_new$grid
+# remove the first column with site names
+bird_winter_data_new <- bird_winter_data_new[,-1]
+# sort by grid cell names
+bird_winter_data_new <- bird_winter_data_new[order(row.names(bird_winter_data_new)),]
+
+# We can then confirm that there are no empty cells, nor any species occurring
+# in no cell:
+which(colSums(bird_summer_data_new)==0)
+which(rowSums(bird_summer_data_new)==0)
+which(colSums(bird_winter_data_new)==0)
+which(rowSums(bird_winter_data_new)==0)
